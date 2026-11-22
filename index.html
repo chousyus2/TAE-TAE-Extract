@@ -1436,9 +1436,9 @@ $('#panes').addEventListener('click',e=>{
     case 'sSave':doExport(false);break;
     case 'sCopy':doExport(true);break;
     case 'preSave':{const n=$('#preName').value.trim()||('프리셋 '+(presetCount+1));presetAdd({n,s:fullState()}).then(()=>{buildPresets();$('#preName').value='';$('#preBox').open=true;toast('프리셋을 저장했어요')}).catch(()=>toast('보관함에 저장하지 못했어요. "현재 세팅 내보내기"로 파일을 받아 두세요'));break}
-    case 'preOut':saveFile('taetae-preset.json',new Blob([JSON.stringify({taetaePreset:2,n:($('#preName').value.trim()||'TAE❣TAE 프리셋'),s:fullState()})],{type:'application/json'}),'프리셋');break;
+    case 'preOut':saveFile(($('#preName').value.trim()||'프리셋')+'.json',new Blob([JSON.stringify({taetaePreset:2,n:($('#preName').value.trim()||'TAE❣TAE 프리셋'),s:fullState()},null,2)],{type:'application/json'}),'프리셋');break;
     case 'preIn':$('#fPreset').click();break;
-    case 'bkOut':saveFile('taetae-backup.json',new Blob([JSON.stringify(S)],{type:'application/json'}),'백업');break;
+    case 'bkOut':saveFile('발췌 백업.json',new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),'백업');break;
     case 'bkIn':$('#fBackup').click();break;
     case 'bkNew':confirmBox('지금 작업을 지우고 처음부터 시작할까요?',()=>{S=DEF();selStk=-1;rebuildAll();toast('새로 시작했어요')});break;
   }
@@ -1626,7 +1626,7 @@ async function copyBlob(blob){try{await navigator.clipboard.write([new Clipboard
 let busy=false;
 async function doExport(copy){
   if(busy)return;busy=true;toast('이미지를 만드는 중…');
-  try{const blob=await renderPNG();const n=new Date(),p=v=>String(v).padStart(2,'0');const name=`TAETAE_${n.getFullYear()}${p(n.getMonth()+1)}${p(n.getDate())}_${p(n.getHours())}${p(n.getMinutes())}.png`;
+  try{const blob=await renderPNG();const n=new Date(),p=v=>String(v).padStart(2,'0');const name='발췌.png';
     let ok=false;if(copy)ok=await copyBlob(blob);showResult(blob,name,ok,copy)}
   catch(e){toast(e.message||'이미지를 만들지 못했어요')}
   busy=false;render();
