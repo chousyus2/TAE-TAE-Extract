@@ -266,6 +266,7 @@ details.guide[open] summary::after{content:"⌃"}
 .novel-line{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--tc);opacity:.25}
 .c-p{margin:0 0 .4em}
 .c-gap{height:calc(var(--lh)*1em)}
+.bgap{height:0;margin-top:var(--bgap,0px);break-inside:avoid}
 .c-h1{font-size:1.6em;font-weight:700;line-height:1.35;margin:.25em 0 .35em}
 .c-h2{font-size:1.3em;font-weight:700;line-height:1.4;margin:.25em 0 .3em}
 .c-h3{font-size:1.08em;font-weight:700;opacity:.85;margin:.2em 0 .25em}
@@ -654,10 +655,10 @@ function DEF(){return{
   text:SAMPLE,
   photos:[], pRatio:'orig', pH:100, pX:50, pY:50, pRadius:12,
   main:{on:false,idx:0,pos:'top',size:40,edge:24,gap:30,radius:16,bw:0,bc:'#5b4330'},
-  theme:'messenger', showName:true, showAvatar:true, bubbleRadius:14, bubbleFs:76, bubbleMax:64, tlFs:76, tlMax:90, gmFs:90, gmMax:100,
+  theme:'messenger', showName:true, showAvatar:true, bubbleRadius:14, bubGap:0, bubbleFs:76, bubbleMax:64, tlFs:76, tlMax:90, gmFs:90, gmMax:100,
   profiles:[PROFILE('서태건','L','#ffffff','#5b4330'),PROFILE('백차영','R','#CCD5AE','#3f4a28'),PROFILE('레오 바렌티','L','#FAEDCD','#6b4a2a'),PROFILE('플로렌스 로세티','R','#E9EDC9','#44502c'),{...PROFILE('엑스트라','L','#ffffff','#5b4330'),extra:true,avColor:'#b8c4d6'}],
   stickers:[],
-  vAlign:'top', tx:0, ty:0, tw:0, enFont:'none', concept:'none', cx:{}, cxScale:140, justify:false, font:'Pretendard', customFont:null, fontSize:24, letter:0, stretch:100, lh:1.75,
+  vAlign:'top', tx:0, ty:0, tw:0, enFont:'none', concept:'none', cx:{}, cxScale:140, cxUseBg:false, justify:false, font:'Pretendard', customFont:null, fontSize:24, letter:0, stretch:100, lh:1.75,
   tcMode:'custom', textColor:'#5b4330', sysBg:'rgba(91,67,48,0.08)', quoteColor:'#CCD5AE',
   hl1:'#FFEB3B', hl1a:48, hl2:'#CCD5AE', hl2a:48, c1:'#D4A373', c2:'#5C9BD5',
   border:'none', borderColor:'#5b4330', emoji:'♡', cornerText:'',
@@ -906,8 +907,9 @@ function bubble(b,cont,last,glast){
 function hr2HTML(b){const st={'점선':'dotted','이중선':'double','없음':'none'}[b.st]||'solid';
   return `<div class="c-hr2 hs-${st}${b.sym?'':' nosym'}${b.col?' cc':''}" style="width:${b.len}%;--ht:${b.th}px;${b.col?`--hc:${b.col};`:''}"><i></i>${b.sym?`<b>${inline(b.sym)}</b>`:''}<i></i></div>`}
 function bodyHTML(){
-  const bl=parse(S.text);let prev=-1,h='';
+  const bl=parse(S.text);let prev=-1,h='',wasB=null;const gp='<div class="bgap"></div>';
   bl.forEach((b,i)=>{
+    const isB=b.t==='bub';if(S.bubGap&&wasB!==null&&isB!==wasB&&b.t!=='gap')h+=gp;if(b.t!=='gap')wasB=isB;
     if(b.t==='bub'){const nx=bl[i+1];h+=bubble(b,b.sp===prev,!nx||nx.t!=='bub',!(nx&&nx.t==='bub'&&nx.sp===b.sp));prev=b.sp;return}
     prev=-1;
     switch(b.t){
@@ -978,6 +980,9 @@ const CX=[
   sample:`[2] 창문 열어 봐 비 와 <[지금]>\n[2] 우산 있어? <[2분 전]>\n[1] 도윤아 별 거 아니었어. <[5분 전]>`}
 ];
 const CXM=Object.fromEntries(CX.map(c=>[c.k,c]));
+const CX_BG={news:'#eef0f3',receipt:'#ebe7f3',translate:'#e6f2ea',movie:'#141414',dm:'#f1f1f4',message:'#fde9ec',discord:'#1e1f22',lounge:'#eef0f2',ytc:'#efefef',xpost:'#e7eef4',calls:'#e9e9ee',search:'#eef4ef',lock:'#2a2a2e'};
+CX.forEach(c=>{if(c.f)c.f.unshift(['cvbg','캔버스 바탕색','color',CX_BG[c.k]||'#f2f2f2'])});
+const cxOn=()=>S.concept&&S.concept!=='none'&&!S.cxUseBg;
 function cxDefaults(){const o={};CX.forEach(c=>{if(c.f){o[c.k]={};c.f.forEach(f=>o[c.k][f[0]]=f[3])}});return o}
 const cxImg=v=>v&&typeof v==='object'&&v.src?v:null;
 const spOf=b=>S.profiles[b.sp]||S.profiles[0];
@@ -1085,14 +1090,15 @@ function render(){
   prepBgHtml();
   const c=$('#card'),W=S.width,H=cardH();
   c.style.width=W+'px';c.classList.toggle('fit',S.fitText);c.style.height=S.fitText?'auto':H+'px';
-  const v={'--ff':ffOf(S.font),'--fs':S.fontSize+'px','--lh':S.lh,'--ls':S.letter+'px','--tc':textColor(),'--hl1':rgba(S.hl1,S.hl1a/100),'--hl2':rgba(S.hl2,S.hl2a/100),'--c1':S.c1,'--c2':S.c2,'--sysbg':S.sysBg,'--qc':S.quoteColor||'#CCD5AE','--br':S.bubbleRadius+'px','--bfs':bubVars()[0]+'%','--bmw':bubVars()[1]+'%','--pad':S.pad+'px','--fc':S.borderColor,'--minh':H+'px','--cxs':(S.cxScale||140)+'%','--mgap':(mainPhoto()?S.main.gap:0)+'px'};
+  const v={'--ff':ffOf(S.font),'--fs':S.fontSize+'px','--lh':S.lh,'--ls':S.letter+'px','--tc':textColor(),'--hl1':rgba(S.hl1,S.hl1a/100),'--hl2':rgba(S.hl2,S.hl2a/100),'--c1':S.c1,'--c2':S.c2,'--sysbg':S.sysBg,'--qc':S.quoteColor||'#CCD5AE','--br':S.bubbleRadius+'px','--bfs':bubVars()[0]+'%','--bmw':bubVars()[1]+'%','--pad':S.pad+'px','--fc':S.borderColor,'--minh':H+'px','--cxs':(S.cxScale||140)+'%','--bgap':(S.bubGap||0)+'px','--mgap':(mainPhoto()?S.main.gap:0)+'px'};
   for(const k in v)c.style.setProperty(k,v[k]);
   const st=S.stretch/100,isNovel=S.cols==='novel';
   const cls=['ctext','th-'+S.theme,S.justify?'jus':'',S.indent?'ind':'',isNovel?'novel':''].join(' ');
   const textBlock=`<div class="stretch" style="width:${(100/st).toFixed(3)}%;transform:scaleX(${st})"><div class="${cls}" style="column-count:${S.cols==='1'?1:2}">${isNovel?'<span class="novel-line"></span>':''}${bodyHTML()}</div></div>`;
-  c.innerHTML=`<div id="bgLayer" style="${bgStyle()}"></div>${S.bg.type==='image'&&S.bg.img?`<div id="bgOv" style="background:${S.bg.ovColor};opacity:${S.bg.ovAlpha/100}"></div>`:''}<div id="bgHtml"></div><div id="content" class="va-${S.vAlign}">${S.concept&&S.concept!=='none'?`<div class="cwrap"><div class="cmid cx-mid">${conceptHTML()}</div></div>`:`<div class="cwrap p-${S.main.pos}">${mainImgHTML(H)}<div class="cmid"><div style="position:relative;left:${S.tx}px;top:${S.ty}px;width:calc(100% + ${S.tw||0}px)">${textBlock}</div></div></div>`}</div><div id="stickers">${stickersHTML()}</div>`;
-  if(S.bg.type==='html')$('#bgHtml').innerHTML=BGH.body;
-  if(S.bg.type==='image'&&S.bg.img){
+  const cxo=cxOn();
+  c.innerHTML=`<div id="bgLayer" style="${cxo?`background:${(S.cx[S.concept]||{}).cvbg||'#f2f2f2'}`:bgStyle()}"></div>${!cxo&&S.bg.type==='image'&&S.bg.img?`<div id="bgOv" style="background:${S.bg.ovColor};opacity:${S.bg.ovAlpha/100}"></div>`:''}<div id="bgHtml"></div><div id="content" class="va-${S.vAlign}">${S.concept&&S.concept!=='none'?`<div class="cwrap"><div class="cmid cx-mid">${conceptHTML()}</div></div>`:`<div class="cwrap p-${S.main.pos}">${mainImgHTML(H)}<div class="cmid"><div style="position:relative;left:${S.tx}px;top:${S.ty}px;width:calc(100% + ${S.tw||0}px)">${textBlock}</div></div></div>`}</div><div id="stickers">${stickersHTML()}</div>`;
+  if(!cxo&&S.bg.type==='html')$('#bgHtml').innerHTML=BGH.body;
+  if(!cxo&&S.bg.type==='image'&&S.bg.img){
     const realH=c.offsetHeight;
     (async()=>{if(bgDims.src!==S.bg.img){const im=await loadImg(S.bg.img);bgDims={w:im.naturalWidth,h:im.naturalHeight,src:S.bg.img}}const u=await blurred();const l=$('#bgLayer');if(l)l.style.cssText=`background-color:${S.bg.color};background-image:url(${u});`+bgImgPos(W,realH)})().catch(()=>{});
   }
@@ -1192,6 +1198,7 @@ sec('ex','chat','채팅','02',`
   ${rng('말풍선 글자 크기','tlFs',50,130,1,'%','theme:timeline')}${rng('말풍선 최대 폭','tlMax',30,100,1,'%','theme:timeline')}
   ${rng('대화창 글자 크기','gmFs',50,130,1,'%','theme:game')}${rng('대화창 최대 폭','gmMax',30,100,1,'%','theme:game')}
   ${rng('말풍선 둥글기','bubbleRadius',0,60,1,'px','theme:messenger')}
+  ${row('말풍선↔본문 간격<span class="val" data-show="bubGap" data-unit="px"></span>',`<button class="btn sm" data-bg="-4">−</button><input type="range" data-k="bubGap" min="-60" max="120" step="1"><button class="btn sm" data-bg="4">+</button><button class="btn sm" data-bg="0">0</button>`)}
   <h4>프로필 (4명 + 엑스트라)</h4>
   <div id="prof"></div>`)+
 sec('ex','photo','사진','03',`
@@ -1218,7 +1225,9 @@ sec('ex','out','출력','05',`
 sec('cx','cx','컨셉','01',`
   <div class="note">컨셉을 고르면 캔버스가 그 화면 모양으로 바뀌어요. 글은 <b>발췌 → 본문</b>에 쓰고, 배경·글자 크기는 <b>설정</b>을 따라가요. 실제 서비스 로고나 이름은 넣지 않은 "~풍" 디자인이에요.</div>
   <div class="cxgrid" id="cxGrid"></div>
-  ${rng('컨셉 글자 크기','cxScale',60,260,5,'%')}`)+
+  ${rng('컨셉 글자 크기','cxScale',60,260,5,'%')}
+  ${chk('설정 탭의 배경(HTML·패턴 등) 위에 컨셉 겹치기','cxUseBg')}
+  <div class="help">끄면 컨셉 화면만 깔끔하게 보이고, 바탕색은 컨셉마다 따로 정해져요(세부 설정에서 변경).</div>`)+
 sec('cx','cxf','컨셉 세부 설정','02',`<div id="cxFields"></div>`)+
 sec('set','type','타이포','01',`
   <h4>서체</h4>
@@ -1397,6 +1406,7 @@ $('#panes').addEventListener('click',e=>{
   const t=e.target.closest('button,.thumb');if(!t)return;const d=t.dataset;
   if(d.px!==undefined){e.stopPropagation();S.photos[+d.px]=null;buildThumbs();schedule();return}
   if(d.pi!==undefined){insertAt(`[사진${+d.pi+1}]`);toast(`[사진${+d.pi+1}]을 넣었어요`);return}
+  if(d.bg!==undefined){S.bubGap=d.bg==='0'?0:Math.max(-60,Math.min(120,(S.bubGap||0)+ +d.bg));syncUI();schedule();return}
   if(d.pos){S.main.pos=d.pos;syncUI();schedule();return}
   if(d.av!==undefined){avTarget=+d.av;$('#fAv').click();return}
   if(d.avx!==undefined){S.profiles[+d.avx].avatar='';buildProfiles();schedule();return}
