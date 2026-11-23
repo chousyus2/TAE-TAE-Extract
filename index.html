@@ -266,6 +266,7 @@ details.guide[open] summary::after{content:"⌃"}
 .novel-line{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--tc);opacity:.25}
 .c-p{margin:0 0 .4em}
 .c-gap{height:calc(var(--lh)*1em)}
+.c-html{margin:.3em 0}
 .bgap{height:0;margin-top:var(--bgap,0px);break-inside:avoid}
 .c-h1{font-size:1.6em;font-weight:700;line-height:1.35;margin:.25em 0 .35em}
 .c-h2{font-size:1.3em;font-weight:700;line-height:1.4;margin:.25em 0 .3em}
@@ -454,7 +455,9 @@ mark.hl2{background:var(--hl2);color:inherit;padding:0 .1em;border-radius:.12em}
 .ms-hn span{font-size:.6em;display:flex;align-items:center;gap:.4em;opacity:.95}.ms-hn span i{width:.6em;height:.6em;border-radius:50%;background:#fff}
 .ms-call{margin-left:auto;font-size:1.05em}
 .ms-body{flex:1;background:var(--bd);padding:1em;display:flex;flex-direction:column;gap:.5em}
-.ms-row{display:flex}.ms-row.me{justify-content:flex-end}
+.ms-row{display:flex;align-items:flex-end;gap:.4em}.ms-row.me{flex-direction:row-reverse}
+.ms-hr{--tc:#b98a8f;font-size:.62em;margin:.6em 0}
+.ms-hr2{--tc:#b98a8f;font-size:.8em}
 .ms-b{max-width:70%;padding:.55em 1em;border-radius:1.2em;font-size:.8em;line-height:1.5;background:var(--yo);color:var(--yot)}
 .ms-row.me .ms-b{background:var(--me);color:var(--met)}
 .ms-b .ph{margin:0;width:11em}
@@ -462,7 +465,7 @@ mark.hl2{background:var(--hl2);color:inherit;padding:0 .1em;border-radius:.12em}
 .ms-play{font-size:.8em}.ms-wave{display:flex;align-items:center;gap:.22em;height:1em}.ms-wave i{display:block;width:.28em;background:#40575a;border-radius:.1em;opacity:.8}
 .ms-vt{font-size:.85em}
 .ms-del{font-size:.72em;font-style:italic;color:var(--hd);border:1.5px dashed var(--hd);border-radius:1.2em;padding:.4em 1em;background:rgba(255,255,255,.4)}
-.ms-time{font-size:.52em;color:#999}.ms-time.me{text-align:right}
+.ms-time{font-size:.55em;color:#a08a8c;white-space:nowrap;margin-bottom:.15em}
 .ms-sys{text-align:center;font-size:.58em;color:#999;margin:.4em 0}
 .ms-input{display:flex;align-items:center;gap:.6em;padding:.7em .9em;border-top:1px solid rgba(0,0,0,.06);background:#fff}
 .ms-img{position:relative;width:1.2em;height:1em;border:.12em solid #6a9b5b;border-radius:.18em;background:#e3f3ff;overflow:hidden}
@@ -856,9 +859,16 @@ function inline(raw){
   let prev;do{prev=s;s=s.replace(/\{([^{}|\u0001\u0002]+)\|([^{}]*)\}/g,(m,k,t)=>styleWrap(k.trim(),t))}while(s!==prev);
   return s.replace(/\u0001/g,'{').replace(/\u0002/g,'}').replace(/\u0000(\d+)\u0000/g,(m,i)=>ph[+i]);
 }
+const VOID=/^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
+function htmlDepth(t){let d=0;t.replace(/<(\/?)([a-z][\w-]*)[^>]*?(\/?)>/gi,(m,cl,tag,self)=>{if(VOID.test(tag)||self)return;d+=cl?-1:1});return d}
+const isHtmlStart=l=>/^\s*<(?!\[)(?:[a-z][\w-]*|!--)[\s>\/]/i.test(l)||/^\s*\[html\]\s*$/i.test(l);
 function parse(text){
-  const out=[];
-  for(let line of text.split('\n')){
+  const out=[];const lines=text.split('\n');
+  for(let li=0;li<lines.length;li++){let line=lines[li];
+    if(isHtmlStart(line)){let buf=[];
+      if(/^\s*\[html\]\s*$/i.test(line)){li++;while(li<lines.length&&!/^\s*\[\/html\]\s*$/i.test(lines[li]))buf.push(lines[li++])}
+      else{let d=0;for(;li<lines.length;li++){buf.push(lines[li]);d+=htmlDepth(lines[li]);if(d<=0)break}}
+      out.push({t:'html',s:buf.join('\n')});continue}
     line=line.replace(/\s+$/,'');let m,time='';
     if(m=line.match(/\s*<\[(.+?)\]>\s*$/)){time=m[1];line=line.slice(0,m.index)}
     if(!line.trim()){out.push({t:'gap'});continue}
@@ -866,7 +876,7 @@ function parse(text){
     if(/^-{3,}$/.test(line.trim())){out.push({t:'hr',s:''});continue}
     if(m=line.match(/^--\s+(.+?)\s+--$/)){out.push({t:'hr',s:m[1]});continue}
     if(m=line.match(/^\[구분선(.*)\]$/)){const ps=m[1].split('|').slice(1).map(x=>x.trim());out.push({t:'hr2',st:ps[0]||'실선',sym:ps[1]||'',col:/^#[0-9a-f]{3,8}$/i.test(ps[2]||'')?ps[2]:'',th:Math.max(1,Math.min(20,parseFloat(ps[3])||2)),len:Math.max(5,Math.min(100,parseFloat(ps[4])||100))});continue}
-    if(m=line.match(/^\[s\]\s?(.*)$/i)){out.push({t:'sys',s:m[1]});continue}
+    if(m=line.match(/^\[s\]\s?(.*)$/i)){out.push({t:'sys',s:m[1],time});continue}
     if(m=line.match(/^\[-\]\s?(.*)$/)){const last=out[out.length-1];if(last&&last.t==='bub')last.tr.push(m[1]);else out.push({t:'tr',s:m[1]});continue}
     if(m=line.match(/^\[([1-5]|e)\]\s?(.*)$/i)){out.push({t:'bub',sp:/e/i.test(m[1])?4:+m[1]-1,s:m[2],tr:[],time});continue}
     if(m=line.match(/^>\s?(.*)$/)){out.push({t:'quote',s:m[1]});continue}
@@ -904,6 +914,14 @@ function bubble(b,cont,last,glast){
   }
   return `<div class="scr"><span class="n" style="color:${sp.color}">${cont?'':esc(sp.name)}</span><span>${body}${tm?`<span class="c-tm">${tm}</span>`:''}${b.tr.map(t=>`<span class="btr">${inline(t)}</span>`).join('')}</span></div>`;
 }
+let htmlN=0;
+function rawHTML(src){
+  const doc=new DOMParser().parseFromString(`<body>${src}</body>`,'text/html');
+  doc.querySelectorAll('script,iframe,object,embed,link,meta,base,form,noscript').forEach(n=>n.remove());
+  doc.querySelectorAll('*').forEach(el=>[...el.attributes].forEach(a=>{if(/^on/i.test(a.name))el.removeAttribute(a.name);else if(/^(href|src|xlink:href|action|formaction)$/i.test(a.name)&&/^\s*javascript:/i.test(a.value))el.removeAttribute(a.name)}));
+  const id='ch'+(++htmlN);let css='';doc.querySelectorAll('style').forEach(st=>{css+=st.textContent+'\n';st.remove()});
+  return `<div class="c-html ${id}">${css?`<style>${scopeCSS(css,'#card')}</style>`:''}${doc.body.innerHTML}</div>`;
+}
 function hr2HTML(b){const st={'점선':'dotted','이중선':'double','없음':'none'}[b.st]||'solid';
   return `<div class="c-hr2 hs-${st}${b.sym?'':' nosym'}${b.col?' cc':''}" style="width:${b.len}%;--ht:${b.th}px;${b.col?`--hc:${b.col};`:''}"><i></i>${b.sym?`<b>${inline(b.sym)}</b>`:''}<i></i></div>`}
 function bodyHTML(){
@@ -916,6 +934,7 @@ function bodyHTML(){
       case 'gap':h+='<div class="c-gap"></div>';break;
       case 'h1':case 'h2':case 'h3':h+=`<div class="c-${b.t}">${inline(b.s)}</div>`;break;
       case 'hr2':h+=hr2HTML(b);break;
+      case 'html':h+=rawHTML(b.s);break;
       case 'hr':h+=`<div class="c-hr${b.s?'':' plain'}">${b.s?inline(b.s):''}</div>`;break;
       case 'sys':h+=`<div class="c-sys">${inline(b.s)}</div>`;break;
       case 'tr':h+=`<div class="c-tr">${inline(b.s)}</div>`;break;
@@ -982,7 +1001,7 @@ const CX=[
 const CXM=Object.fromEntries(CX.map(c=>[c.k,c]));
 const CX_BG={news:'#eef0f3',receipt:'#ebe7f3',translate:'#e6f2ea',movie:'#141414',dm:'#f1f1f4',message:'#fde9ec',discord:'#1e1f22',lounge:'#eef0f2',ytc:'#efefef',xpost:'#e7eef4',calls:'#e9e9ee',search:'#eef4ef',lock:'#2a2a2e'};
 CX.forEach(c=>{if(c.f)c.f.unshift(['cvbg','캔버스 바탕색','color',CX_BG[c.k]||'#f2f2f2'])});
-const cxOn=()=>S.concept&&S.concept!=='none'&&!S.cxUseBg;
+const cxOn=()=>S.concept&&S.concept!=='none';
 function cxDefaults(){const o={};CX.forEach(c=>{if(c.f){o[c.k]={};c.f.forEach(f=>o[c.k][f[0]]=f[3])}});return o}
 const cxImg=v=>v&&typeof v==='object'&&v.src?v:null;
 const spOf=b=>S.profiles[b.sp]||S.profiles[0];
@@ -1036,8 +1055,11 @@ const CXR={
     if(/^\[삭제(됨)?\]$/.test(s))inner=`<div class="ms-del">삭제된 메시지입니다.</div>`;
     else if(/^\[음성(\s+[^\]]*)?\]$/.test(s)){const t=(s.match(/^\[음성\s*([^\]]*)\]$/)||[])[1]||'0:12';const bars=[4,7,10,6,9,5,8,4,6,3].map(v=>`<i style="height:${v/10}em"></i>`).join('');inner=`<div class="ms-b ms-voice"><span class="ms-play">▶</span><span class="ms-wave">${bars}</span><span class="ms-vt">${esc(t)}</span></div>`}
     else inner=`<div class="ms-b">${inline(b.s)}${trs(b)}</div>`;
-    h+=`<div class="ms-row ${me?'me':'you'}">${inner}</div>${b.time?`<div class="ms-time ${me?'me':''}">${esc(b.time)}</div>`:''}`;return}
-   if(b.t==='sys'||b.t==='p'||(b.t==='hr'&&b.s))h+=`<div class="ms-sys">${inline(b.s)}</div>`});
+    h+=`<div class="ms-row ${me?'me':'you'}">${inner}${b.time?`<span class="ms-time">${esc(b.time)}</span>`:''}</div>`;return}
+   if(b.t==='sys'||b.t==='p')h+=`<div class="ms-sys">${inline(b.s)}${b.time?` · ${esc(b.time)}`:''}</div>`;
+   else if(b.t==='hr')h+=`<div class="c-hr${b.s?'':' plain'} ms-hr">${b.s?inline(b.s):''}</div>`;
+   else if(b.t==='hr2')h+=`<div class="ms-hr2">${hr2HTML(b)}</div>`;
+   else if(b.t==='html')h+=rawHTML(b.s)});
   const other=S.profiles.find(p=>p.side==='L')||S.profiles[0];
   return `<div class="cx cx-phone cx-ms" style="--hd:${c.head};--bd:${c.body};--yo:${c.you};--yot:${c.youText};--me:${c.me};--met:${c.meText};--vc:${c.voice}"><div class="ms-in"><div class="ms-head">${cxAv(other,'ms-av')}<div class="ms-hn"><b>${esc(c.name||other.name)}</b><span><i></i>${esc(c.status)}</span></div><span class="ms-call">📞</span></div><div class="ms-body">${h}</div><div class="ms-input"><span class="ms-img"><i></i></span><span class="ms-ph">${esc(c.placeholder)}</span><span class="ms-heart">♥</span></div></div></div>`},
  discord(c,bl){let h='',prev=-1;bl.forEach(b=>{
@@ -1087,6 +1109,7 @@ const ffOf=f=>(S.enFont&&S.enFont!=='none'?`'${S.enFont}',`:'')+ffOf0(f);
 const bubVars=()=>S.theme==='timeline'?[S.tlFs??76,S.tlMax??90]:S.theme==='game'?[S.gmFs??90,S.gmMax??100]:[S.bubbleFs??76,S.bubbleMax??64];
 const textColor=()=>S.tcMode==='black'?'#1f1f1f':S.tcMode==='white'?'#ffffff':S.textColor;
 function render(){
+  htmlN=0;
   prepBgHtml();
   const c=$('#card'),W=S.width,H=cardH();
   c.style.width=W+'px';c.classList.toggle('fit',S.fitText);c.style.height=S.fitText?'auto':H+'px';
@@ -1107,7 +1130,7 @@ function render(){
   if(SCROLLERS.includes(S.concept))fitConcept();
   refreshStickers();fit();
 }
-let rq=0;function schedule(){cancelAnimationFrame(rq);rq=requestAnimationFrame(()=>{render();autosave()})}
+let rq=0;function schedule(){if(typeof composing!=='undefined'&&composing)return;cancelAnimationFrame(rq);rq=requestAnimationFrame(()=>{render();autosave()})}
 
 /* zoom */
 function fit(){
@@ -1183,6 +1206,7 @@ sec('ex','text','본문','01',`
     <tr><td><code>---</code> / <code>-- 내용 --</code></td><td>구분선 / 글자 있는 구분선</td></tr>
     <tr><td><code>[구분선|점선|♡|#색|굵기|길이%]</code></td><td>구분선 (툴바 ― 구분선 버튼으로 쉽게 넣어요)</td></tr>
     <tr><td><code>&lt;[오후 3:20]&gt;</code></td><td>줄 끝에 붙이면 시간 표시</td></tr>
+    <tr><td><code>&lt;div&gt;…&lt;/div&gt;</code></td><td>줄 맨 앞에 HTML 태그를 쓰면 HTML 그대로 보여요. 여러 줄이면 <code>[html]</code>과 <code>[/html]</code> 줄 사이에 넣어도 돼요. 스크립트는 실행되지 않아요.</td></tr>
     <tr><td><code>&gt; 문장</code></td><td>인용</td></tr>
     <tr><td><code>**굵게** *기울기* __밑줄__ ~~취소~~</code></td><td>글자 꾸미기</td></tr>
     <tr><td><code>||검열||</code></td><td>검게 가리기</td></tr>
@@ -1226,8 +1250,7 @@ sec('cx','cx','컨셉','01',`
   <div class="note">컨셉을 고르면 캔버스가 그 화면 모양으로 바뀌어요. 글은 <b>발췌 → 본문</b>에 쓰고, 배경·글자 크기는 <b>설정</b>을 따라가요. 실제 서비스 로고나 이름은 넣지 않은 "~풍" 디자인이에요.</div>
   <div class="cxgrid" id="cxGrid"></div>
   ${rng('컨셉 글자 크기','cxScale',60,260,5,'%')}
-  ${chk('설정 탭의 배경(HTML·패턴 등) 위에 컨셉 겹치기','cxUseBg')}
-  <div class="help">끄면 컨셉 화면만 깔끔하게 보이고, 바탕색은 컨셉마다 따로 정해져요(세부 설정에서 변경).</div>`)+
+  <div class="help">컨셉을 고르면 컨셉 화면만 보여요. 바탕색은 세부 설정의 "캔버스 바탕색"에서 바꿔요.</div>`)+
 sec('cx','cxf','컨셉 세부 설정','02',`<div id="cxFields"></div>`)+
 sec('set','type','타이포','01',`
   <h4>서체</h4>
@@ -1458,6 +1481,9 @@ $('#tool').addEventListener('click',e=>{
   if(d.l){const a=t.selectionStart,ls=t.value.lastIndexOf('\n',a-1)+1;let le=t.value.indexOf('\n',a);if(le<0)le=t.value.length;
     const line=t.value.slice(ls,le).replace(/^>\s?/,'');t.setRangeText(d.l+line,ls,le,'end');t.focus();commitTA()}
 });
+let composing=false;
+$('#txt').addEventListener('compositionstart',()=>{composing=true});
+$('#txt').addEventListener('compositionend',e=>{composing=false;S.text=e.target.value;schedule()});
 $('#txt').addEventListener('paste',async e=>{
   const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));if(!files.length)return;
   e.preventDefault();for(const f of files){const n=await addPhoto(f);insertAt(`[사진${n}]`)}
@@ -1627,7 +1653,7 @@ let busy=false;
 async function doExport(copy){
   if(busy)return;busy=true;toast('이미지를 만드는 중…');
   try{const blob=await renderPNG();const n=new Date(),p=v=>String(v).padStart(2,'0');const name='발췌.png';
-    let ok=false;if(copy)ok=await copyBlob(blob);showResult(blob,name,ok,copy)}
+    if(copy){if(!(await copyBlob(blob)))showResult(blob,name,false,true)}else{await saveFile(name,blob,'이미지')}}
   catch(e){toast(e.message||'이미지를 만들지 못했어요')}
   busy=false;render();
 }
